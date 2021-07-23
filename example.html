@@ -15,6 +15,7 @@
             width: 100%;
             display: block;
             background-color: #fbfaf7;
+            overflow: hidden;
         }
 
         .topic-graph {
@@ -57,12 +58,19 @@
             padding: 20px;
         }
 
+        .graph-article-content {
+            overflow: hidden;
+        }
+
+        .graph-article-content .t-col {
+            max-width: fit-content;
+        }
+
         .graph-article.open {
             transform: translateX(0%);
         }
 
         .graph-article-close {
-            float: right;
             font-size: 2rem;
             font-weight: 300;
             font-family: Arial, sans-serif;
@@ -71,7 +79,9 @@
         }
 
         .graph-article-overlay {
-            position: absolute;
+            position: fixed;
+            left: 0;
+            top: 0;
             width: 100%;
             height: 100%;
             background-color: #000;

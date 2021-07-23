@@ -1,0 +1,142 @@
+<div>
+    <div id="topic-graph1" class="graph-container">
+        <button class="copy-topics">Copy topics</button>
+        <div class="graph-article-overlay"></div>
+        <div class="topic-graph"></div>
+        <div class="graph-article">
+            <button class="graph-article-close">x</button>
+            <div class="graph-article-content"></div>
+        </div>
+    </div>
+    <style>
+        .graph-container {
+            height: 800px;
+            position: relative;
+            width: 100%;
+            display: block;
+            background-color: #fbfaf7;
+        }
+
+        .topic-graph {
+            height: 100%;
+            flex: 1;
+        }
+
+        .graph-container button {
+            color: #000;
+            border: none;
+            background-color: #fff;
+            cursor: pointer;
+        }
+        .graph-container button:hover {
+            background-color: #eee;
+        }
+
+        .graph-container .copy-topics {
+            display: none;
+            padding: 10px;
+        }
+        .graph-container .copy-topics.show {
+            display: block;
+        }
+
+        .graph-article {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            left: auto;
+            height: 100%;
+            width: 100%;
+            max-width: 640px;
+            overflow: auto;
+            z-index: 9999;
+            background: #fff;
+            transform: translateX(100%);
+            transition: transform .4s cubic-bezier(0.075,0.82,0.165,1);
+            padding: 20px;
+        }
+
+        .graph-article.open {
+            transform: translateX(0%);
+        }
+
+        .graph-article-close {
+            float: right;
+            font-size: 2rem;
+            font-weight: 300;
+            font-family: Arial, sans-serif;
+            width: 50px;
+            height: 50px;
+        }
+
+        .graph-article-overlay {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            opacity: 0;
+            z-index: 9990;
+            transition: opacity .4s cubic-bezier(0.075,0.82,0.165,1), display .4s cubic-bezier(0.075,0.82,0.165,1);
+            pointer-events: none;
+        }
+
+        .graph-article-overlay.open {
+            pointer-events: all;
+            opacity: 0.5;
+        }
+    </style>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script type="text/javascript" src="topic-graph.js"></script>
+    <script>
+        const graphSettings = {
+            articleRoot: "",
+            editMode: true,
+        };
+        const graphTopics = [
+    {
+        "name": "UBI",
+        "url": "testpage1",
+        "color": "#00505b",
+        "subtopics": [
+            {
+                "name": "Race",
+                "color": "#727478",
+                "url": "https://rentry.co/sesd5/raw",
+                "x": 486.3580780435245,
+                "y": 442.65675391739876
+            },
+            {
+                "name": "Work",
+                "color": "#cbf7fc",
+                "subtopics": [
+                    {
+                        "name": "Job Precariousness",
+                        "subtopics": [
+                            {
+                                "name": "Inner 1",
+                                "x": 756.3110209714866,
+                                "y": 147.21543572401296
+                            },
+                            {
+                                "name": "Inner 2",
+                                "x": 752.2913556887405,
+                                "y": 218.54250799355702
+                            }
+                        ],
+                        "x": 557.8286020598808,
+                        "y": 171.80668178837075
+                    }
+                ],
+                "x": 371.4118147524638,
+                "y": 244.2551559612696
+            }
+        ],
+        "x": 287.0859821935607,
+        "y": 425.608826900812
+    }
+];
+        
+        window.topicGraph = initTopicGraph("#topic-graph1", graphSettings, graphTopics);
+    </script>
+</div>

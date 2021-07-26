@@ -1,11 +1,15 @@
 <div>
     <div id="topic-graph1" class="graph-container">
-        <button class="copy-topics">Copy topics</button>
+        <button class="button copy-topics">Copy topics</button>
         <div class="graph-article-overlay"></div>
         <div class="topic-graph"></div>
         <div class="graph-article">
-            <button class="graph-article-close">x</button>
-            <div class="graph-article-menu"></div>
+            <button class="button graph-article-open"></button>
+            <div class="graph-article-container">
+                <button class="button graph-article-close">&gt;</button>
+                <span class="graph-themes">UBI Themes</span>
+                <div class="graph-article-menu"></div>
+            </div>
         </div>
     </div>
     <style>
@@ -23,13 +27,13 @@
             flex: 1;
         }
 
-        .graph-container button {
+        .graph-container .button {
             color: #000;
             border: none;
             background-color: #fff;
             cursor: pointer;
         }
-        .graph-container button:hover {
+        .graph-container .button:hover {
             background-color: #eee;
         }
 
@@ -42,7 +46,7 @@
         }
 
         .graph-article {
-            position: fixed;
+            position: absolute;
             top: 0;
             bottom: 0;
             right: 0;
@@ -50,12 +54,10 @@
             height: 100%;
             width: 100%;
             max-width: 640px;
-            overflow: auto;
             z-index: 9999;
             background: #fff;
             transform: translateX(100%);
             transition: transform .4s cubic-bezier(0.075,0.82,0.165,1);
-            padding: 20px;
         }
 
         .graph-article-content {
@@ -78,16 +80,46 @@
             transform: translateX(0%);
         }
 
-        .graph-article-close {
-            font-size: 2rem;
+        .graph-article-container {
+            overflow: auto;
+            height: 100%;
+            padding: 20px;
+        }
+
+        .graph-article-open {
+            font-size: 1.5rem;
             font-weight: 300;
             font-family: Arial, sans-serif;
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
+            position: absolute;
+            left: -60px;
+            top: 20px;
+        }
+
+        .graph-article-open::before {
+            content: "<";
+        }
+        
+        .graph-article.open .graph-article-open {
+            display: none;
+        }
+
+        .graph-article.open .graph-article-open::before {
+            content: ">";
+        }
+
+        .graph-article-close {
+            font-size: 1.5rem;
+            font-weight: 300;
+            font-family: Arial, sans-serif;
+            width: 60px;
+            height: 60px;
+            float: right;
         }
 
         .graph-article-overlay {
-            position: fixed;
+            position: absolute;
             left: 0;
             top: 0;
             width: 100%;
@@ -105,20 +137,16 @@
         }
 
         .tg-accordion {
-            background-color: #eee;
-            color: #444;
+            background: none;
             cursor: pointer;
             padding: 18px;
             width: 100%;
             border: none;
+            border-bottom: 1px solid #e6e6e6;
             text-align: left;
             outline: none;
             font-size: 15px;
             transition: 0.4s;
-        }
-
-        .graph-article-menu>.tg-active, .tg-accordion:hover {
-            background-color: #ccc;
         }
 
         .tg-accordion:after {
@@ -134,8 +162,6 @@
         }
 
         .tg-panel {
-            padding: 0 18px;
-            background-color: white;
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.2s ease-out;
@@ -144,8 +170,8 @@
         /* Style the tab */
         .tg-tab {
             overflow: hidden;
-            border: 1px solid #ccc;
-            background-color: #f1f1f1;
+            border: none;
+            color: #6d6d6d;
         }
 
         /* Style the buttons inside the tab */
@@ -155,27 +181,71 @@
             border: none;
             outline: none;
             cursor: pointer;
-            padding: 14px 16px;
+            padding: 14px 16px 0 16px;
             transition: 0.3s;
             font-size: 17px;
+            color: #6d6d6d;
+            font-weight: 500;
         }
 
-        /* Change background color of buttons on hover */
-        .tg-tab button:hover {
-            background-color: #ddd;
+        .tg-tab button:hover, .tg-tab button.tg-active {
+            color: #9a6013;
         }
 
-        /* Create an active/current tablink class */
-        .tg-tab button.tg-active {
-            background-color: #ccc;
+        .tg-tab .tg-underline {
+            width: 56px;
+            height: 3px;
+            margin-top: 4px;
+            margin-left: 16px;
+            background-color: #9a6013;
+            opacity: 0;
+            transition: 0.3s;
+        }
+
+        .tg-tablinks.tg-active .tg-underline {
+            opacity: 1;
         }
 
         /* Style the tab content */
         .tg-tabcontent {
             display: none;
-            padding: 6px 12px;
-            border: 1px solid #ccc;
-            border-top: none;
+        }
+
+        .tg-subthemes {
+            margin-top: 10px;
+        }
+
+        @media(min-width: 1200px) {
+            .graph-container.open .topic-graph {
+                width: calc(100% - 640px)
+            }
+
+            .graph-article.open .graph-article-open {
+                display: block;
+            }
+
+            .graph-article-close {
+                display: none;
+            }
+
+            .graph-themes {
+                display: none;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        .graph-themes {
+            color: #9a6013;
+            font-weight: 600;
+            font-size: 2rem;
+        }
+
+        body {
+            padding: 0;
+            margin: 0;
         }
     </style>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
@@ -205,11 +275,13 @@
                     },
                     {
                         "name": "Care Work",
+                        "url": "gender/Core_Work",
                         "x": 252.7137619960702,
                         "y": 39.89592990776608
                     },
                     {
                         "name": "Women in the labor market",
+                        "url": "gender/Women_in_the_labor_market",
                         "x": 306.719748341196,
                         "y": -2.591651701801976
                     }
@@ -223,21 +295,25 @@
                 "subtopics": [
                     {
                         "name": "Civic Participation",
+                        "url": "democracy/Civic_Participation",
                         "x": 544.6071974302823,
                         "y": -106.36485598765493
                     },
                     {
                         "name": "Democratization",
+                        "url": "democracy/Democratization",
                         "x": 623.3430331893508,
                         "y": -99.22008092491774
                     },
                     {
                         "name": "Democratic Justifications for UBI",
+                        "url": "democracy/Democratic_Justifications_for_UBI",
                         "x": 696.3406814652202,
                         "y": -59.455521633624635
                     },
                     {
                         "name": "Good Governance",
+                        "url": "democracy/Good_Governance",
                         "x": 743.4184516799484,
                         "y": -0.3511839190272403
                     }
@@ -251,31 +327,37 @@
                 "subtopics": [
                     {
                         "name": "Economic Inequality",
+                        "url": "economic_effects/Economic_Inequality",
                         "x": 841.987684196374,
                         "y": 11.076988668497643
                     },
                     {
                         "name": "Inflation",
+                        "url": "economic_effects/Inflation",
                         "x": 879.9676637819414,
                         "y": 49.29648088860832
                     },
                     {
                         "name": "Consumption",
+                        "url": "economic_effects/Consumption",
                         "x": 906.4177635478945,
                         "y": 96.39722855303472
                     },
                     {
                         "name": "Migration",
+                        "url": "economic_effects/Migration",
                         "x": 919.3957748786602,
                         "y": 149.80671198686238
                     },
                     {
                         "name": "Impact on Labor Supply",
+                        "url": "economic_effects/Impact_on_Labor_Supply",
                         "x": 917.7016519790327,
                         "y": 202.6532289883966
                     },
                     {
                         "name": "Savings & investment",
+                        "url": "economic_effects/Savings_and_investment",
                         "x": 899.4313557451919,
                         "y": 259.03927248666696
                     }
@@ -286,20 +368,22 @@
             {
                 "name": "Race",
                 "color": "#737579",
-                "url": "https://telegra.ph/Svetlyachki-09-28",
                 "subtopics": [
                     {
                         "name": "Racialized Welfare Stereotypes",
+                        "url": "race/Racialized_Welfare_Stereotypes",
                         "x": 951.190211290826,
                         "y": 376.507643148285
                     },
                     {
                         "name": "Racial Economic Inequality",
+                        "url": "race/Racial_Economic_Inequality",
                         "x": 925.8676708405864,
                         "y": 427.59847824161153
                     },
                     {
                         "name": "Guaranteed Income in African American History",
+                        "url": "race/Guaranteed_Income_in_African_American_History",
                         "x": 884.2714611671145,
                         "y": 471.76340078439523
                     }
@@ -313,21 +397,25 @@
                 "subtopics": [
                     {
                         "name": "Job Precariousness",
+                        "url": "work/Job_Precariousness",
                         "x": 550.8973724659019,
                         "y": 590.0596095658191
                     },
                     {
                         "name": "Bargaining Power",
+                        "url": "work/Bargaining_Power",
                         "x": 613.5368576978229,
                         "y": 631.1714575911118
                     },
                     {
                         "name": "Work beyond Jobs",
+                        "url": "work/Work_beyond_Jobs",
                         "x": 696.8342024968821,
                         "y": 646.2549089768328
                     },
                     {
                         "name": "Unemployment",
+                        "url": "work/Unemployment",
                         "x": 774.2395160090775,
                         "y": 627.7718323021545
                     }
@@ -341,6 +429,7 @@
                 "subtopics": [
                     {
                         "name": "Automation and the Future of Work",
+                        "url": "automation/Automation_and_the_Future_of_Work",
                         "x": 293.56705458659945,
                         "y": 538.8862597985267
                     }
@@ -354,16 +443,19 @@
                 "subtopics": [
                     {
                         "name": "Mental Health",
+                        "url": "health/Mental_Health",
                         "x": 179.98360986108216,
                         "y": 388.2657362875801
                     },
                     {
                         "name": "Access to Health Services",
+                        "url": "health/Access_to_Health_Services",
                         "x": 189.9840029942512,
                         "y": 309.1510729231446
                     },
                     {
                         "name": "Physical Health",
+                        "url": "health/Physical_Health",
                         "x": 226.9465905329399,
                         "y": 243.85931212268662
                     }

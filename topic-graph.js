@@ -7,7 +7,8 @@ const initTopicGraph = (selectorPrefix, graphSettings, graphTopics) => {
     let chart = null;
     let initialNodeData = null;
     let editMode = !!settings.editMode;
-    const articleCache = {};
+    const nodeIds = {};
+    let lastTab = null;
 
     const init = () => {
         initialNodeData = extractNodesAndLinks(settings.topics);
@@ -48,20 +49,19 @@ const initTopicGraph = (selectorPrefix, graphSettings, graphTopics) => {
             ]
         };
 
-        // init chart
+        // start chart init
         chart = echarts.init(document.querySelector(selectorPrefix + ' .topic-graph'));
         chart.on('click', (e) => {
             if (e.componentType !== 'series' || e.dataType !== 'node') return;
-            if (!e.data.topic.url) return;
-            if (e.data.id === 0) openArticle();
+            if (e.data.id === 0) toggleArticle();
+            else if (!e.data.topic.url && e.data.topic.id && e.data.topic.id.indexOf('-') < 0) openArticleWithId(e.data.topic.id + '-0');
             else openArticleWithId(e.data.topic.id);
         });
         chart.showLoading();
-        chart.setOption(options);
-        chart.hideLoading();
 
         // buttons
         document.querySelector(selectorPrefix + ' .graph-article-close').addEventListener('click', () => closeArticle());
+        document.querySelector(selectorPrefix + ' .graph-article-open').addEventListener('click', () => toggleArticle());
         document.querySelector(selectorPrefix + ' .graph-article-overlay').addEventListener('click', () => closeArticle());
         if (editMode) {
             const cp = document.querySelector(selectorPrefix + ' .copy-topics');
@@ -69,20 +69,20 @@ const initTopicGraph = (selectorPrefix, graphSettings, graphTopics) => {
             cp.classList.add('show');
         }
 
-        const createAccordionButton = (id, name) => {
+        const createAccordionButton = (id, name, color) => {
             const el = document.createElement('button');
             el.classList.add('tg-accordion');
             el.classList.add(`tg-accordion-${id}`);
-            el.innerHTML = name;
-            el.addEventListener('click', () => openAccordion(id));
+            el.innerHTML = `<span style="color: ${color}">&#x2B24;</span> ${name}`;
+            el.addEventListener('click', () => toggleAccordion(id));
             return el;
         };
 
-        const createTabButton = (id, name) => {
+        const createTabButton = (id, name, color) => {
             const el = document.createElement('button');
             el.classList.add('tg-tablinks');
             el.classList.add(`tg-tab-button-${id}`);
-            el.innerHTML = name;
+            el.innerHTML = `<span style="color: ${color}">&#x25CF;</span> ${name}<div class="tg-underline"></div>`;
             el.addEventListener('click', () => openTab(id));
             return el;
         };
@@ -90,7 +90,9 @@ const initTopicGraph = (selectorPrefix, graphSettings, graphTopics) => {
         // load article menu
         const menu = document.querySelector(selectorPrefix + ' .graph-article-menu');
         for (const [idA, topic] of settings.topics[0].subtopics.entries()) {
-            menu.appendChild(createAccordionButton(idA, topic.name));
+            topic.id = `${idA}`;
+            const topicColor = topic.color || settings.topics[0].color || '#000';
+            menu.appendChild(createAccordionButton(idA, topic.name, topicColor));
             menu.insertAdjacentHTML('beforeend', 
                 `<div class="tg-panel tg-panel-${idA}">
                     <div class="tg-tab"></div>
@@ -99,9 +101,10 @@ const initTopicGraph = (selectorPrefix, graphSettings, graphTopics) => {
             const tabMenus = menu.querySelectorAll('.tg-tab');
             const tabMenu = tabMenus[tabMenus.length - 1];
             const tabs = tabMenu.parentElement;
+            tabMenu.insertAdjacentHTML('beforeend', '<div class="tg-subthemes">SUB-THEMES</div>');
             for (const [idB, tab] of topic.subtopics.entries()) {
                 tab.id = `${idA}-${idB}`;
-                tabMenu.appendChild(createTabButton(tab.id, tab.name));
+                tabMenu.appendChild(createTabButton(tab.id, tab.name, tab.color || topicColor));
                 tabs.insertAdjacentHTML('beforeend', 
                     `<div class="tg-tabcontent tg-tab-${tab.id}">
                         <h3>Tab ${tab.id}</h3>
@@ -109,10 +112,19 @@ const initTopicGraph = (selectorPrefix, graphSettings, graphTopics) => {
                     </div>`
                 );
             }
+
+            for (const i in initialNodeData.nodes) {
+                if (!initialNodeData.nodes[i].topic.id && initialNodeData.nodes[i].topic.id !== 0) continue;
+                nodeIds[initialNodeData.nodes[i].topic.id] = i;
+            }
         }
 
-        // preload articles
-        initialNodeData.nodes.filter(node => node.topic.id).forEach((node) => preloadArticle(node.topic.id));
+        // async preload articles
+        initialNodeData.nodes.filter(node => node.topic.id && node.topic.url).forEach((node) => preloadArticle(node.topic.id, node.topic.url));
+
+        // finish chart init
+        chart.setOption(options);
+        chart.hideLoading();
     };
 
     const toggleEitMode = () => {
@@ -141,8 +153,9 @@ const initTopicGraph = (selectorPrefix, graphSettings, graphTopics) => {
     };
 
     const openArticleWithId = async (id) => {
+        if (!id) return;
         const ids = id.split('-');
-        openAccordion(id[0], id[1]);
+        openAccordion(ids[0], ids[1]);
         openArticle();
     };
     const preloadArticle = async (id, name) => {
@@ -151,9 +164,10 @@ const initTopicGraph = (selectorPrefix, graphSettings, graphTopics) => {
     };
     const getArticle = async (name) => {
         let url = settings.articleRoot + name;
-        if (settings.useProxy) url = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        if (settings.useProxy) url = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
         const res = await fetch(url);
-        let data = await res.text();
+        let data = settings.useProxy ? (await res.json()).contents : await res.text();
+        if (settings.useProxy) data
         if (settings.articleSource === 'telegraph') {
             data = cutFrom(data, '<article id="_tl_editor" class="tl_article_content">');
             data = cutTo(data, '</article>');
@@ -168,34 +182,54 @@ const initTopicGraph = (selectorPrefix, graphSettings, graphTopics) => {
 
     const toggleArticle = () => {
         if (document.querySelector(selectorPrefix + ' .graph-article').classList.contains('open')) closeArticle();
-        else openArticle();
+        else {
+            openArticle();
+            openTab(lastTab);
+        }
     };
 
     const openArticle = () => {
+        document.querySelector(selectorPrefix + '.graph-container').classList.add('open');
+        resizeChart();
         document.querySelector(selectorPrefix + ' .graph-article').classList.add('open');
-        document.querySelector(selectorPrefix + ' .graph-article-overlay').classList.add('open');
+        // document.querySelector(selectorPrefix + ' .graph-article-overlay').classList.add('open');
     };
 
     const closeArticle = () => {
+        document.querySelector(selectorPrefix + '.graph-container').classList.remove('open');
+        resizeChart();
         document.querySelector(selectorPrefix + ' .graph-article').classList.remove('open');
-        document.querySelector(selectorPrefix + ' .graph-article-overlay').classList.remove('open');
+        // document.querySelector(selectorPrefix + ' .graph-article-overlay').classList.remove('open');
+        chart.dispatchAction({type: 'downplay'});
     };
 
-    const openAccordion = (id, tabId = 0) => {
-        // close all accordions
-        const accordions = document.querySelectorAll(selectorPrefix + ' .tg-accordion');
-        for (const acc2 of accordions) {
-            if (!acc2.classList.contains('tg-active')) continue;
-            acc2.classList.remove('tg-active');
-            acc2.nextElementSibling.style.maxHeight = null;
-        }
+    const resizeChart = () => {
+        chart.resize({
+            animation: {
+                duration: 400,
+            }
+        });
+    };
 
+    const toggleAccordion = (id, tabId = 0) => {
+        if (!document.querySelector(`${selectorPrefix} .tg-accordion-${id}`).classList.contains('tg-active')) openAccordion(id, tabId);
+        else closeAllAccordions();
+    };
+    const closeAllAccordions = () => {
+        const accordions = document.querySelectorAll(selectorPrefix + ' .tg-accordion');
+        for (const acc of accordions) {
+            if (!acc.classList.contains('tg-active')) continue;
+            acc.classList.remove('tg-active');
+            acc.nextElementSibling.style.maxHeight = null;
+        }
+        chart.dispatchAction({type: 'downplay'});
+    };
+    const openAccordion = (id, tabId = 0) => {
+        closeAllAccordions();
         openTab(`${id}-${tabId}`);
         const el = document.querySelector(selectorPrefix + ` .tg-accordion-${id}`)
         el.classList.toggle('tg-active');
-        const panel = el.nextElementSibling;
-        if (panel.style.maxHeight) panel.style.maxHeight = null;
-        else panel.style.maxHeight = panel.scrollHeight + 'px';
+        recalcMaxHeight(id);
     };
     const openTab = (id) => {
         const tabcontents = document.getElementsByClassName('tg-tabcontent');
@@ -206,9 +240,21 @@ const initTopicGraph = (selectorPrefix, graphSettings, graphTopics) => {
         for (const el of tablinks) {
             el.classList.remove('tg-active');
         }
-        document.querySelector(selectorPrefix + ` .tg-tab-${id}`).style.display = 'block';
-        document.querySelector(selectorPrefix + ` .tg-tab-button-${id}`).classList.add('tg-active');
+        document.querySelector(`${selectorPrefix} .tg-tab-${id}`).style.display = 'block';
+        document.querySelector(`${selectorPrefix} .tg-tab-button-${id}`).classList.add('tg-active');
+        const ids = id.split('-');
+        recalcMaxHeight(ids[0]);
+
+        //highlight nodes
+        lastTab = id;
+        chart.dispatchAction({type: 'downplay'});
+        chart.dispatchAction({type: 'highlight', dataIndex: nodeIds[id]});
+        chart.dispatchAction({type: 'highlight', dataIndex: nodeIds[ids[0]]});
     }
+    const recalcMaxHeight = (id) => {
+        const panel = document.querySelector(`${selectorPrefix} .tg-panel-${id}`);
+        panel.style.maxHeight = panel.scrollHeight + 'px';
+    };
 
     // helpers
     const extractNodesAndLinks = (topics, parent = null, nodes = [], links = [], level = 0) => {
